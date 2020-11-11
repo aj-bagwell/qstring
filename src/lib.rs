@@ -318,7 +318,7 @@ impl ::std::fmt::Display for QString {
 }
 
 fn decode(s: &str) -> String {
-    percent_decode(s.as_bytes())
+    percent_decode(s.replace('+', " ").as_bytes())
         .decode_utf8()
         .map(|cow| cow.into_owned())
         .unwrap_or_else(|_| s.to_string())
@@ -330,6 +330,7 @@ const FRAGMENT: &AsciiSet = &CONTROLS
     .add(b'<')
     .add(b'>')
     .add(b'`')
+    .add(b'+')
     .add(b'&')
     .add(b'?')
     .add(b'=');
@@ -352,15 +353,15 @@ mod tests {
                     .into_iter()
                     .map(|(k, v)| (k.to_string(), v.to_string()))
                     .collect();
-                assert_eq!(ps, cs);
+                assert_eq!(ps, cs, "when decoding {}", stringify!($origin));
             }
         };
     }
 
     #[test]
     fn encode_amp() {
-        let x = QString::new(vec![("foo", "b&?=ar")]);
-        assert_eq!("foo=b%26%3F%3Dar", x.to_string());
+        let x = QString::new(vec![("foo", "b&?=a+r")]);
+        assert_eq!("foo=b%26%3F%3Da%2Br", x.to_string());
     }
 
     #[test]
@@ -389,6 +390,10 @@ mod tests {
     test!(a_is_9, "?&a=b", vec![("a", "b")]);
     test!(a_is_10, "?a=&", vec![("a", "")]);
     test!(a_is_11, "?=a", vec![("a", "")]);
+
+    test!(plus_1, "?a=b+c", vec![("a", "b c")]);
+    test!(plus_2, "?a=b c", vec![("a", "b c")]);
+    test!(plus_3, "?a=b%2Bc", vec![("a", "b+c")]);
 
     test!(a_is_eq_1, "a==", vec![("a", "=")]);
 
